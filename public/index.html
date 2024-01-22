@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOCKET.IO CHAT</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #36393f;
+            color: #ffffff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #channels, #messages {
+            overflow: auto;
+            padding: 10px;
+            flex: 1;
+        }
+
+        form {
+            display: flex;
+            padding: 10px;
+        }
+
+        input {
+            padding: 8px;
+            margin-right: 5px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 8px;
+            background-color: #7289da;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .channel-link {
+            color: #7289da;
+            text-decoration: none;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .channel-link:hover {
+            text-decoration: underline;
+        }
+
+        p {
+            margin: 5px 0;
+        }
+
+        #users {
+            float: right;
+            padding: 10px;
+            background-color: #2e3338;
+        }
+
+        #userList {
+            list-style: none;
+            padding: 0;
+        }
+
+        .user-connected {
+            color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div id="channels">
+        <!-- Afficher la liste des canaux ici -->
+    </div>
+    <div id="users">
+        <h2>Users</h2>
+        <ul id="userList"></ul>
+    </div>
+    <div id="messages"></div>
+    <form action="">
+        <input id="msg" autocomplete="off" placeholder="Type your message..." />
+        <button>Send</button>
+    </form>
+    <form id="channelForm">
+        <input id="channelName" autocomplete="off" placeholder="Channel name" />
+        <button type="submit">Create Channel</button>
+    </form>
+    <form id="deleteChannelForm">
+        <input id="deleteChannelName" autocomplete="off" placeholder="Channel name to delete" />
+        <button type="submit">Delete Channel</button>
+    </form>
+    <form id="renameChannelForm">
+        <input id="currentChannelName" autocomplete="off" placeholder="Current channel name" />
+        <input id="newChannelName" autocomplete="off" placeholder="New channel name" />
+        <button type="submit">Rename Channel</button>
+    </form>
+    <form id="quitChannelForm">
+        <input id="quitChannelName" autocomplete="off" placeholder="Channel name to quit" />
+        <button type="submit">Quit Channel</button>
+    </form>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        $(function () {
+            var socket = io();
+
+            $("form").submit(function (e) {
+                e.preventDefault();
+                var message = $("#msg").val();
+
+                if (message.startsWith('/quit')) {
+                    var channelToQuit = message.substring(6).trim();
+                    socket.emit("quit channel", channelToQuit);
+                } else if (message.startsWith('/create')) {
+                    var channelToCreate = message.substring(8).trim();
+                    socket.emit("create channel", channelToCreate);
+                } else if (message.startsWith('/delete')) {
+                    var channelToDelete = message.substring(8).trim();
+                    socket.emit("delete channel", channelToDelete);
+                } else if (message.startsWith('/join')) {
+                    var channelToJoin = message.substring(6).trim();
+                    socket.emit("join channel", channelToJoin);
+                } else if (message.startsWith('/users')) {
+                    var channelName = message.substring(7).trim();
+                    socket.emit("list users", channelName);
+                } else {
+                    socket.emit("chat message", message);
+                }
+
+                $("#msg").val("");
+                return false;
+            });
+
+            socket.on('chat message', function (msg) {
+                $("#messages").append($("<p>").text(msg));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
+            });
+
+            socket.on('update users', function (users) {
+                // Afficher la liste des utilisateurs dans la zone de message
+                $("#messages").append($("<p>").html(`<strong>Users:</strong> ${users.join(', ')}`));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
+            });
+
+            $("#channelForm").submit(function (e) {
+                e.preventDefault();
+                var channelName = $("#channelName").val();
+                socket.emit("create channel", channelName);
+                $("#channelName").val("");
+                return false;
+            });
+
+            $("#deleteChannelForm").submit(function (e) {
+                e.preventDefault();
+                var channelNameToDelete = $("#deleteChannelName").val();
+                socket.emit("delete channel", channelNameToDelete);
+                $("#deleteChannelName").val("");
+                return false;
+            });
+
+            $("#renameChannelForm").submit(function (e) {
+                e.preventDefault();
+                var currentChannelName = $("#currentChannelName").val();
+                var newChannelName = $("#newChannelName").val();
+                socket.emit("rename channel", { currentChannelName, newChannelName });
+                $("#currentChannelName").val("");
+                $("#newChannelName").val("");
+                return false;
+            });
+
+            $("#quitChannelForm").submit(function (e) {
+                e.preventDefault();
+                var channelNameToQuit = $("#quitChannelName").val();
+                socket.emit("quit channel", channelNameToQuit);
+                $("#quitChannelName").val("");
+                return false;
+            });
+
+            socket.on('update channels', function (channels) {
+                $("#channels").empty();
+                channels.forEach(function (channel) {
+                    $("#channels").append($("<p>").html(`<a href="#" class="channel-link" data-channel="${channel}">#${channel}</a>`));
+                });
+            });
+
+            socket.on('update users', function (users) {
+                $("#userList").empty();
+                users.forEach(function (user) {
+                    $("#userList").append($("<li>").addClass("user-connected").text(user));
+                });
+            });
+
+            $("#channels").on("click", ".channel-link", function (e) {
+                e.preventDefault();
+                var channelName = $(this).data("channel");
+                socket.emit("join channel", channelName);
+            });
+
+            socket.on('user joined', function (message) {
+                $("#messages").append($("<p>").text(message));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
+            });
+
+            socket.on('user left', function (message) {
+                $("#messages").append($("<p>").text(message));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
+            });
+        });
+    </script>
+</body>
+</html>
