@@ -7,6 +7,8 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
+            background: url(https://i.pinimg.com/originals/08/aa/6d/08aa6d335800958992b9a6e5b66c2a10.jpg)center center fixed;
+            background-size: cover;
             background-color: #36393f;
             color: #ffffff;
             margin: 0;
@@ -27,7 +29,7 @@
         }
 
         input {
-            padding: 8px;
+            padding: 15px;
             margin-right: 5px;
             border: none;
             border-radius: 5px;
@@ -41,9 +43,12 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        button:hover {
+            background-color: #79da72;
+        }
 
         .channel-link {
-            color: #7289da;
+            color: #fff;
             text-decoration: none;
             margin-right: 10px;
             font-weight: bold;
@@ -60,7 +65,7 @@
         #users {
             float: right;
             padding: 10px;
-            background-color: #2e3338;
+            background-color: #7289da;
         }
 
         #userList {
@@ -69,8 +74,68 @@
         }
 
         .user-connected {
-            color: #4caf50;
+            color: #79da72;
         }
+        
+        #messages {
+        background-color: rgba(255, 255, 255, 0.2); /* Fond semi-transparent */
+        padding: 10px;
+        border-radius: 8px;
+        overflow: auto;
+        flex: 1;
+    }
+
+    p {
+        margin: 5px 0;
+        border: 1px solid #7289da; /* Ajouter une bordure autour de chaque message */
+        padding: 8px;
+        border-radius: 5px; /* Ajouter des coins arrondis à la bordure des messages */
+        background-color: #7289da;
+    }
+
+
+
+        /* Styles pour le formulaire principal */
+        form#mainForm {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        /* Styles pour le bouton principal "Send" */
+        #mainSendButton {
+            padding: 8px;
+            background-color: #7289da;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #mainSendButton:hover {
+            background-color: #5a61c5;
+        }
+        
+        @media only screen and (max-width: 600px) {
+    #messages {
+        padding: 5px;
+        font-size: 14px; /* Ajuster la taille du texte pour les petits écrans */
+    }
+
+    p {
+        padding: 5px;
+        font-size: 12px; /* Ajuster la taille du texte pour les petits écrans */
+    }
+    button {
+        padding: 5px;
+        font-size: 14px;
+    }
+}
+
     </style>
 </head>
 <body>
