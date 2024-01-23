@@ -103,11 +103,18 @@
         <input id="quitChannelName" autocomplete="off" placeholder="Channel name to quit" />
         <button type="submit">Quit Channel</button>
     </form>
-    <script src="/socket.io/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    
     <script>
+        function updateCookie(name, value) {
+            document.cookie = `${name}=${encodeURIComponent(value)}`;
+        }
+
+
         $(function () {
             var socket = io();
+            var listChannelsCommand = false; // Variable pour suivre si la commande /list a été émise
 
             $("form").submit(function (e) {
                 e.preventDefault();
@@ -128,7 +135,28 @@
                 } else if (message.startsWith('/users')) {
                     var channelName = message.substring(7).trim();
                     socket.emit("list users", channelName);
-                } else {
+                } else if (message.startsWith('/list')) {
+                    var filterString = message.substring(6).trim();
+                    console.log('Form submitted with message:', message);
+                    listChannelsCommand = true; // Définir la variable pour indiquer que la commande /list a été émise
+                    socket.emit("list channels", filterString);
+                } else if (message.startsWith('/nick')) {
+                    var newNickname = message.substring(6).trim();
+                    socket.emit("change nickname", newNickname);
+                    updateCookie('username', newNickname);
+                    $("#msg").val("");
+                    
+                    return false;
+                } /*else if (message.startsWith('/msg')) {
+                    var messageParts = message.split(' ');
+                    var recipient = messageParts[1];
+                    var privateMessage = messageParts.slice(2).join(' ');
+
+                    socket.emit("private message", { recipient, message: privateMessage });
+
+                    $("#msg").val("");
+                    return false;
+                }*/ else {
                     socket.emit("chat message", message);
                 }
 
@@ -186,13 +214,23 @@
                 channels.forEach(function (channel) {
                     $("#channels").append($("<p>").html(`<a href="#" class="channel-link" data-channel="${channel}">#${channel}</a>`));
                 });
+
+                // Afficher le message uniquement si la commande /list a été émise
+                if (listChannelsCommand) {
+                    $("#messages").append($("<p>").html(`<strong>Channels:</strong> ${channels.join(', ')}`));
+                    $("#messages").scrollTop($("#messages")[0].scrollHeight);
+                    listChannelsCommand = false; // Réinitialiser la variable après l'affichage
+                }
             });
+
+
 
             socket.on('update users', function (users) {
                 $("#userList").empty();
                 users.forEach(function (user) {
                     $("#userList").append($("<li>").addClass("user-connected").text(user));
                 });
+                console.log("#userList");
             });
 
             $("#channels").on("click", ".channel-link", function (e) {
