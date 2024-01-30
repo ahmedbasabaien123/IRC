@@ -168,12 +168,32 @@
         <input id="quitChannelName" autocomplete="off" placeholder="Channel name to quit" />
         <button type="submit">Quit Channel</button>
     </form>
+    
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     
     <script>
+        var userModified;
         function updateCookie(name, value) {
-            document.cookie = `${name}=${encodeURIComponent(value)}`;
+            document.cookie = `${name}=${(value)}`;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+
+        function createCookie(value) {
+            // Créer un cookie avec le nom "username" et la valeur "votreValeur"
+            document.cookie = `${`username`}=${(value)}`;
+
+            // Vous pouvez également spécifier des options comme l'expiration, le chemin, etc.
+            // Par exemple, pour définir une expiration en une heure :
+            const expirationDate = new Date();
+            expirationDate.setHours(expirationDate.getHours() + 1);
+            document.cookie = "username=" + encodeURIComponent(value) + "; expires=" + expirationDate.toUTCString() + "; path=/";
+            userModified = value;
+            console.log("userModified: " + userModified);
+
         }
 
 
@@ -206,27 +226,44 @@
                     listChannelsCommand = true; // Définir la variable pour indiquer que la commande /list a été émise
                     socket.emit("list channels", filterString);
                 } else if (message.startsWith('/nick')) {
-                    var newNickname = message.substring(6).trim();
+                    //var newNickname = message.substring(5).trim();
                     socket.emit("change nickname", newNickname);
-                    updateCookie('username', newNickname);
+                    //console.log(newNickname);
+                    const parts = message.trim().split(' ');
+                    const thirdValue = parts[2];
+
+                    var newNickname = thirdValue.trim();
+                    //console.log(newNickname);
+
+                    var newNicknameModified = newNickname;
+                    console.log(newNicknameModified);
+
+                    deleteCookie('username');
+                    createCookie(newNickname);
                     $("#msg").val("");
                     
                     return false;
-                } /*else if (message.startsWith('/msg')) {
+                } else if (message.startsWith('/msg')) {
                     var messageParts = message.split(' ');
                     var recipient = messageParts[1];
-                    var privateMessage = messageParts.slice(2).join(' ');
-
-                    socket.emit("private message", { recipient, message: privateMessage });
+                    var privateMessage = "To: " + recipient + " " + messageParts.slice(2).join(' ');
+                    var currentChannel = "EpitechServer";
+                    // Émettre le message privé au serveur
+                    socket.emit("private message", { recipient, message: privateMessage, channelName: currentChannel });
 
                     $("#msg").val("");
                     return false;
-                }*/ else {
+                } else {
                     socket.emit("chat message", message);
                 }
 
                 $("#msg").val("");
                 return false;
+            });
+
+            socket.on('private message', function (msg) {
+                $("#messages").append($("<p>").text(msg));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
             });
 
             socket.on('chat message', function (msg) {

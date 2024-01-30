@@ -3,7 +3,6 @@ const app = express();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const cookieParser = require('cookie-parser');
-//const { MongoClient } = require('mongodb');
 const MongoClient = require('mongodb').MongoClient;
 
 app.use(cookieParser());
@@ -16,7 +15,6 @@ app.get('/', (req, res) => {
 
 app.get('/chat', (req, res) => {
     const username = req.query.username;
-    console.log(username);
 
     res.cookie('username', username);
 
@@ -26,7 +24,6 @@ app.get('/chat', (req, res) => {
     res.sendFile(`${__dirname}/public/index.html`);
 });
 
-//const mongoUrl = 'mongodb://localhost:27017';
 const dbName = 'chatApp';
 
 async function getChannels() {
@@ -39,8 +36,6 @@ async function connectToMongoDB() {
     try {
         const uri = 'mongodb://max:votre_mot_de_passe@127.0.0.1:27017/';
         const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-
-        //const client = new MongoClient(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
         await client.connect();
         console.log('Connected to MongoDB');
         db = client.db(dbName); // Affecter db ici après la connexion réussie
@@ -51,10 +46,12 @@ async function connectToMongoDB() {
     }
 }
 
+
+
 connectToMongoDB()
     .then((db) => {
         io.on('connection', async(socket) => {
-            console.log('Un utilisateur s\'est connecté');
+            //console.log('Un utilisateur s\'est connecté');
 
             var username = decodeURIComponent(socket.handshake.headers.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
 
@@ -73,9 +70,7 @@ connectToMongoDB()
 
             socket.on('disconnect', () => {
                 // ... Utilisez la base de données ici si nécessaire ...
-            });
-
-            
+            }); 
         });
 
         server.listen(3000, () => {
@@ -86,36 +81,28 @@ connectToMongoDB()
         console.error('Error in MongoDB connection:', error);
     });
 
-    /*function getUsername(socketId) {
-        const channelNames = Object.keys(channels);
-        for (const channelName of channelNames) {
-            const user = channels[channelName].find(user => user.id === socketId);
-            if (user) {
-                return user.username;
-            }
-        }
-        return null;
-    }
-
-    // Fonction pour trouver l'ID du socket par nom d'utilisateur
-    function findSocketIdByUsername(username) {
-        const channelNames = Object.keys(channels);
-        for (const channelName of channelNames) {
-            const user = channels[channelName].find(user => user.username === username);
-            if (user) {
-                return user.id;
-            }
-        }
-        return null;
-    }*/
-
 io.on('connection', (socket) => {
-    console.log('Un utilisateur s\'est connecté');
+    //console.log('Un utilisateur s\'est connecté');
 
     var username = decodeURIComponent(socket.handshake.headers.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
     
     socket.emit('update channels', getChannels());
+
+    socket.on('private message', function ({ recipient, message, channelName }) {
+        // Trouver le socket du destinataire
+        const recipientSocket = getConnectedUserSocket(recipient, channelName);
     
+        if (recipientSocket) {
+            // Émettre le message privé au destinataire
+            recipientSocket.emit('private message', message);
+            // Émettre le message privé à l'expéditeur
+            socket.emit('private message', message);
+        } else {
+            // Informer l'expéditeur que le destinataire n'est pas connecté
+            console.log(`Recipient ${recipient} not found in channel ${channelName}`);
+            socket.emit('private message', 'Recipient is not online');
+        }
+    });
 
     socket.on('chat message', (msg) => {
         var username = decodeURIComponent(socket.handshake.headers.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
@@ -153,7 +140,6 @@ io.on('connection', (socket) => {
         
         // Émettre la liste mise à jour à tous les utilisateurs connectés
         io.emit('update channels', updatedChannels);
-        //io.emit('update channels', Object.keys(channels));
     });
 
     socket.on('join channel', (channelName) => {
@@ -224,57 +210,55 @@ io.on('connection', (socket) => {
             }
             return false;
         });
+
+        const decodedNickname = decodeURIComponent(newNickname);
     
         // Mettez à jour le nom d'utilisateur pour le socket spécifié
         if (channelWithUser && channels[channelWithUser]) {
             const index = channels[channelWithUser].findIndex(user => user.id === socketId);
             if (index !== -1) {
-                channels[channelWithUser][index].username = newNickname;
+                channels[channelWithUser][index].username = decodedNickname;
                 io.to(channelWithUser).emit('update users', getConnectedUsers(channelWithUser));
-                const message = `User ${socketId} changed nickname to ${newNickname}`;
+                const message = `User ${socketId} changed nickname to ${decodedNickname}`;
                 io.to(channelWithUser).emit('nickname changed', message);
             }
-        }
-
-        
+        }  
     });
-
-    /*socket.on('private message', ({ recipient, message }) => {
-        const sender = getUsername(socket.id);
-        const recipientSocket = findSocketIdByUsername(recipient);
-
-        if (recipientSocket) {
-            io.to(recipientSocket).emit('private message', { sender, message });
-
-            // Émettre également le message au sender pour qu'il puisse le voir
-            socket.emit('private message', { sender, message });
-        } else {
-            // Émettre un message au sender s'il y a un problème avec le destinataire
-            socket.emit('server message', 'User not found or offline.');
-        }
-    });
-    socket.on('private message', function ({ sender, message }) {
-        // Afficher le message privé dans la zone de messages
-        $("#messages").append($("<p>").html(`<em>Whisper to ${sender}:</em> ${message}`));
-        $("#messages").scrollTop($("#messages")[0].scrollHeight);
-    });*/
-    
-    
-    
 });
 
 function getConnectedUsers(channelName) {
     const users = [];
 
     if (channels[channelName]) {
-        channels[channelName].forEach((user) => {
-            users.push(user.username);
+        channels[channelName].forEach((newNickname) => {
+            users.push(newNickname.username);
+            console.log("cc" +newNickname.username);
         });
     }
-
     return users;
 }
+
+function getConnectedUserSocket(username, channelName) {
+    // Trouver le socket du destinataire dans le canal spécifié
+    const channelUsers = channels[channelName];
+
+    if (channelUsers) {
+        const user = channelUsers.find(user => user.username === username);
+        
+        if (user) {
+            const recipientSocketId = user.id;
+            const recipientSocket = io.sockets.sockets.get(recipientSocketId);
+
+            return recipientSocket;
+        }
+    }
+
+    return null;
+}
+
 
 server.listen(3000, () => {
     console.log('Listening on port 3000');
 });
+
+
