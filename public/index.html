@@ -196,7 +196,6 @@
 
         }
 
-
         $(function () {
             var socket = io();
             var listChannelsCommand = false; // Variable pour suivre si la commande /list a été émise
@@ -218,25 +217,18 @@
                     var channelToJoin = message.substring(6).trim();
                     socket.emit("join channel", channelToJoin);
                 } else if (message.startsWith('/users')) {
-                    var channelName = message.substring(7).trim();
-                    socket.emit("list users", channelName);
+                    socket.emit("list users");
                 } else if (message.startsWith('/list')) {
                     var filterString = message.substring(6).trim();
                     console.log('Form submitted with message:', message);
                     listChannelsCommand = true; // Définir la variable pour indiquer que la commande /list a été émise
                     socket.emit("list channels", filterString);
                 } else if (message.startsWith('/nick')) {
-                    //var newNickname = message.substring(5).trim();
                     socket.emit("change nickname", newNickname);
-                    //console.log(newNickname);
                     const parts = message.trim().split(' ');
                     const thirdValue = parts[2];
-
                     var newNickname = thirdValue.trim();
-                    //console.log(newNickname);
-
                     var newNicknameModified = newNickname;
-                    console.log(newNicknameModified);
 
                     deleteCookie('username');
                     createCookie(newNickname);
@@ -326,14 +318,12 @@
             });
 
 
-
-            socket.on('update users', function (users) {
-                $("#userList").empty();
-                users.forEach(function (user) {
-                    $("#userList").append($("<li>").addClass("user-connected").text(user));
-                });
-                console.log("#userList");
+            socket.on('list users', function (users) {
+                // Afficher la liste des utilisateurs dans la zone de message
+                $("#messages").append($("<p>").html(`<strong>Users:</strong> ${users.join(', ')}`));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
             });
+            
 
             $("#channels").on("click", ".channel-link", function (e) {
                 e.preventDefault();

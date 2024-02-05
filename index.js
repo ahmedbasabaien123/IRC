@@ -51,10 +51,8 @@ async function connectToMongoDB() {
 connectToMongoDB()
     .then((db) => {
         io.on('connection', async(socket) => {
-            //console.log('Un utilisateur s\'est connecté');
 
             var username = decodeURIComponent(socket.handshake.headers.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
-
             const updatedChannels = await getChannels();
         // Émettre la liste mise à jour à tous les utilisateurs connectés
             io.emit('update channels', updatedChannels);
@@ -108,7 +106,7 @@ io.on('connection', (socket) => {
         var username = decodeURIComponent(socket.handshake.headers.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
         var usermsg = username + ": " + msg ;
         //saveMessageToDB(usermsg);
-        io.emit('chat message', usermsg);
+        //io.emit('chat message', usermsg);
     });
 
     socket.on('create channel', async (channelName) => {
@@ -185,9 +183,15 @@ io.on('connection', (socket) => {
 
     socket.on('list users', (channelName) => {
         const users = getConnectedUsers(channelName);
-        io.to(channelName).emit('update users', getConnectedUsers(channelName));
-        socket.emit('update users', users);
+        socket.emit('update users', users); // Utilisez socket.emit ici pour envoyer uniquement au socket actuel
+    
     });
+
+    socket.on('update users', function (users) {
+                // Afficher la liste des utilisateurs dans la zone de message
+                $("#messages").append($("<p>").html(`<strong>Users:</strong> ${users.join(', ')}`));
+                $("#messages").scrollTop($("#messages")[0].scrollHeight);
+            });
 
     socket.on('list channels', async() => {
         // Récupérer la liste mise à jour des canaux
@@ -195,7 +199,6 @@ io.on('connection', (socket) => {
         // Émettre la liste mise à jour à tous les utilisateurs connectés
         io.emit('update channels', updatedChannels);
     });
-
 
     socket.on('change nickname', (newNickname) => {
         // Récupérez l'ID du socket
@@ -252,10 +255,8 @@ function getConnectedUserSocket(username, channelName) {
             return recipientSocket;
         }
     }
-
     return null;
 }
-
 
 server.listen(3000, () => {
     console.log('Listening on port 3000');
